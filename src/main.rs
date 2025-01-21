@@ -1,4 +1,5 @@
 use aws_sdk_ec2 as ec2;
+use ec2::types::Image;
 use ec2::types::Filter;
 use ec2::types::BlockDeviceMapping;
 
@@ -16,26 +17,41 @@ impl fmt::Display for ImageData {
     }    
 }
 
-async fn get_image_data(client:ec2::Client) -> Result<ImageData,ec2::Error> {
-
+async fn describe_images(client:ec2::Client, filter_string:&str) -> Vec<Image> {
     let resp = client.describe_images()
-        .filters(Filter::builder().name("name").values("cpp-driver-*").build())
+        .filters(Filter::builder().name("name").values(filter_string).build())
         .send()
-        .await?;
-    let first = resp.images()
-        .first()
-        .unwrap();
-    Ok(ImageData {
-        image_id: first.image_id().unwrap().to_string(),
-        creation_date: first.creation_date().unwrap().to_string(),
-        snapshot_ids: first.block_device_mappings().iter()
-            .filter(|mapping| -> bool { !mapping.ebs().is_none() })
-            .map(|mapping:&BlockDeviceMapping| -> String {
-                mapping.ebs().expect("ebs entry was null")
-                .snapshot_id().expect("snapshot_id was null").to_string()
-            })
-            .collect::<Vec<String>>()
-    })
+        .await;
+    match resp {
+        Ok(v) => v.images.unwrap_or_default(),
+        Err(e) => {
+            eprintln!("Error retrieving image data: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+async fn build_image_data(images:Vec<Image>) -> Vec<ImageData> {
+
+    images.iter().map(|image| -> ImageData {
+        ImageData {
+            image_id: image.image_id().unwrap().to_string(),
+            creation_date: image.creation_date().unwrap().to_string(),
+            snapshot_ids: image.block_device_mappings().iter()
+                .filter(|mapping| -> bool { !mapping.ebs().is_none() })
+                .map(|mapping:&BlockDeviceMapping| -> String {
+                    mapping.ebs().expect("ebs entry was null")
+                        .snapshot_id().expect("snapshot_id was null").to_string()
+                })
+                .collect::<Vec<String>>()
+        }
+    }).collect()
+}
+
+async fn get_image_data(client:ec2::Client) -> Vec<ImageData> {
+
+    let images = describe_images(client, "cpp-driver-*").await;
+    build_image_data(images).await
 }
 
 #[tokio::main]
@@ -43,8 +59,9 @@ async fn main() -> Result<(), ec2::Error> {
     let config = aws_config::load_from_env().await;
     let client = ec2::Client::new(&config);
 
-    let image = get_image_data(client).await?;
+    for image_data in get_image_data(client).await {
+        println!("Image: {}", image_data);
+    }
 
-    println!("Image: {}", image);
     Ok(())
 }
