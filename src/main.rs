@@ -7,7 +7,7 @@ use rr::imagedata;
 async fn get_image_data(client:ec2::Client) -> Vec<imagedata::ImageData> {
 
     let images = aws::describe_images(client, "cpp-driver-*").await;
-    imagedata::build_image_data(images)
+    images.iter().map(|img| imagedata::to_image_data(img)).collect()
 }
 
 #[tokio::main]
