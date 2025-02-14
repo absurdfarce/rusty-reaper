@@ -7,6 +7,7 @@ use ec2::types::Image;
 // Collection of ops related to ImageData and it's uses
 
 pub struct ImageData {
+    name: String,
     image_id: String,
     creation_date: String,
     snapshot_ids: Vec<String>
@@ -14,7 +15,8 @@ pub struct ImageData {
 
 impl fmt::Display for ImageData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(image_id: {}, creation_date: {}, snapshot IDs: {})", self.image_id, self.creation_date, self.snapshot_ids.join(","))
+        write!(f, "(image_id: {}, name: {}, creation_date: {}, snapshot IDs: {})",
+               self.image_id, self.name, self.creation_date, self.snapshot_ids.join(","))
     }
 }
 
@@ -22,6 +24,7 @@ impl fmt::Display for ImageData {
 pub fn to_image_data(image:&Image) -> ImageData {
 
     ImageData {
+        name: image.name().unwrap().to_string(),
         image_id: image.image_id().unwrap().to_string(),
         creation_date: image.creation_date().unwrap().to_string(),
         snapshot_ids: image.block_device_mappings().iter()
