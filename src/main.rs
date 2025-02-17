@@ -53,12 +53,6 @@ fn filter_string(image_type: &ImageType) -> &str {
     }
 }
 
-async fn get_image_data(client:ec2::Client, filter_string: &str) -> Vec<imagedata::ImageData> {
-
-    let images = aws::describe_images(client, filter_string).await;
-    images.iter().map(|img| imagedata::to_image_data(img)).collect()
-}
-
 #[tokio::main]
 async fn main() -> Result<(), ec2::Error> {
 
@@ -72,7 +66,8 @@ async fn main() -> Result<(), ec2::Error> {
             let image_type = cli.image.unwrap_or_else(|| ImageType::Java);
             let filter_string = filter_string(&image_type);
             println!("Retrieving image data, filter string: {}", filter_string);
-            for image_data in get_image_data(client, filter_string).await {
+            let aws_images = aws::describe_images(client, filter_string).await;
+            for image_data in imagedata::to_image_data_vector(aws_images) {
                 println!("Image: {}", image_data);
             }
         }

@@ -36,3 +36,8 @@ pub fn to_image_data(image:&Image) -> ImageData {
             .collect::<Vec<String>>()
     }
 }
+
+// Convenience function to apply the transform above to an existing vector
+pub fn to_image_data_vector(images:Vec<Image>) -> Vec<ImageData> {
+    images.iter().map(|img| to_image_data(img)).collect()
+}
