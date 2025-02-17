@@ -14,7 +14,10 @@ enum ImageType {
     CppJammy,
     CppRocky8,
     CppRocky9,
-    Cpp
+    Cpp,
+    CsharpBionic,
+    CsharpWindows
+
 }
 
 #[derive(Parser)]
@@ -45,6 +48,8 @@ fn filter_string(image_type: &ImageType) -> &str {
         ImageType::CppRocky8 => "cpp-driver-rocky8-64-*",
         ImageType::CppRocky9 => "cpp-driver-rocky9-64-*",
         ImageType::Cpp => "cpp-driver-*",
+        ImageType::CsharpBionic => "cpp-driver-bionic-64-*",
+        ImageType::CsharpWindows => "cpp-driver-windows-64-*",
     }
 }
 
