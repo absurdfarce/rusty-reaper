@@ -1,9 +1,11 @@
 use aws_sdk_ec2 as ec2;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, ValueEnum};
+use std::io::Error;
 
 pub mod rr;
 use rr::aws;
 use rr::imagedata;
+use rr::ui::UI;
 
 #[derive(ValueEnum,Clone,Debug)]
 enum ImageType {
@@ -27,15 +29,6 @@ struct Cli {
     // Type of image we wish to operate on
     #[arg(value_enum, short, long)]
     image: Option<ImageType>,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    List,
-    Delete
 }
 
 fn filter_string(image_type: &ImageType) -> &str {
@@ -54,28 +47,20 @@ fn filter_string(image_type: &ImageType) -> &str {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ec2::Error> {
-
+async fn main() -> Result<(), Error> {
     let cli = Cli::parse();
 
     let config = aws_config::load_from_env().await;
     let client = ec2::Client::new(&config);
 
-    match &cli.command{
-        Some(Command::List) => {
-            let image_type = cli.image.unwrap_or_else(|| ImageType::Java);
-            let filter_string = filter_string(&image_type);
-            println!("Retrieving image data, filter string: {}", filter_string);
-            let aws_images = aws::describe_images(client, filter_string).await;
-            for image_data in imagedata::to_image_data_vector(aws_images) {
-                println!("Image: {}", image_data);
-            }
-        }
-        Some(Command::Delete) => {
-            println!("Performing deletes");
-        }
-        None => {}
-    }
+    let image_type = cli.image.unwrap_or_else(|| ImageType::Java);
+    let filter_string = filter_string(&image_type);
+    println!("Retrieving image data, filter string: {}", filter_string);
+    let aws_images = aws::describe_images(client, filter_string).await;
+    let images = imagedata::to_image_data_vector(aws_images);
 
-    Ok(())
+    let terminal = ratatui::init();
+    let rv = UI::new(images).run(terminal);
+    ratatui::restore();
+    rv
 }

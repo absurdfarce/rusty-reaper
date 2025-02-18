@@ -13,6 +13,15 @@ pub struct ImageData {
     snapshot_ids: Vec<String>
 }
 
+impl ImageData {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn creation_date(&self) -> &str {
+        &self.creation_date
+    }
+}
 impl fmt::Display for ImageData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(image_id: {}, name: {}, creation_date: {}, snapshot IDs: {})",
