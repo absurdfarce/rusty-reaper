@@ -19,7 +19,6 @@ use rr::imagedata::ImageData;
 // (https://ratatui.rs/examples/widgets/table/)
 
 struct TableColors {
-    //buffer_bg: Color,
     header_bg: Color,
     header_fg: Color,
     row_fg: Color,
@@ -33,7 +32,6 @@ struct TableColors {
 impl TableColors {
     const fn new(color: &tailwind::Palette) -> Self {
         Self {
-            //buffer_bg: tailwind::SLATE.c950,
             header_bg: color.c900,
             header_fg: tailwind::SLATE.c200,
             row_fg: tailwind::SLATE.c200,
@@ -131,13 +129,11 @@ impl UI {
                 // + 1 is for padding.
                 Constraint::Length(self.longest_item_lens.0 + 1),
                 Constraint::Min(self.longest_item_lens.1),
-            ],
-        )
+            ])
             .header(header)
             .row_highlight_style(selected_row_style)
             .column_highlight_style(selected_col_style)
             .cell_highlight_style(selected_cell_style)
-            //.bg(self.colors.buffer_bg)
             .highlight_spacing(HighlightSpacing::Always);
         frame.render_stateful_widget(t, area, &mut self.state);
     }
