@@ -1,27 +1,22 @@
 use std::fmt;
 
+use tabled::Tabled;
+
 use aws_sdk_ec2 as ec2;
 use ec2::types::BlockDeviceMapping;
 use ec2::types::Image;
 
 // Collection of ops related to ImageData and it's uses
 
+#[derive(Tabled)]
 pub struct ImageData {
     name: String,
     image_id: String,
     creation_date: String,
+    #[tabled(display("display_snapshot_ids"))]
     snapshot_ids: Vec<String>
 }
 
-impl ImageData {
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn creation_date(&self) -> &str {
-        &self.creation_date
-    }
-}
 impl fmt::Display for ImageData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(image_id: {}, name: {}, creation_date: {}, snapshot IDs: {})",
@@ -29,8 +24,12 @@ impl fmt::Display for ImageData {
     }
 }
 
+fn display_snapshot_ids(val: &Vec<String>) -> String {
+    val.join(",")
+}
+
 // Build an ImageData instance from an AWS Image instance
-pub fn to_image_data(image:&Image) -> ImageData {
+pub fn from_image(image:&Image) -> ImageData {
 
     ImageData {
         name: image.name().unwrap().to_string(),
@@ -47,6 +46,6 @@ pub fn to_image_data(image:&Image) -> ImageData {
 }
 
 // Convenience function to apply the transform above to an existing vector
-pub fn to_image_data_vector(images:Vec<Image>) -> Vec<ImageData> {
-    images.iter().map(to_image_data).collect()
+pub fn from_image_vector(images:Vec<Image>) -> Vec<ImageData> {
+    images.iter().map(from_image).collect()
 }

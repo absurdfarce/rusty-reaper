@@ -1,11 +1,12 @@
+use std::io::Error;
+
 use aws_sdk_ec2 as ec2;
 use clap::{Parser, ValueEnum};
-use std::io::Error;
+use tabled::Table;
 
 pub mod rr;
 use rr::aws;
 use rr::imagedata;
-use rr::ui::UI;
 
 #[derive(ValueEnum,Clone,Debug)]
 enum ImageType {
@@ -57,10 +58,9 @@ async fn main() -> Result<(), Error> {
     let filter_string = filter_string(&image_type);
     println!("Retrieving image data, filter string: {}", filter_string);
     let aws_images = aws::describe_images(client, filter_string).await;
-    let images = imagedata::to_image_data_vector(aws_images);
+    let images = imagedata::from_image_vector(aws_images);
 
-    let terminal = ratatui::init();
-    let rv = UI::new(images).run(terminal);
-    ratatui::restore();
-    rv
+    let table = Table::new(images);
+    println!("{}", table);
+    Ok(())
 }
