@@ -1,5 +1,4 @@
 use std::io::Error;
-use futures::future;
 use futures::prelude::*;
 
 use aws_config::SdkConfig;
@@ -42,11 +41,11 @@ struct Cli {
     platform: Option<ImagePlatform>,
 
     #[command(subcommand)]
-    command: Commands,
+    command: Command,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+enum Command {
     List(ListArgs),
     Delete(DeleteArgs)
 }
@@ -57,17 +56,28 @@ struct ListArgs {}
 #[derive(Args)]
 struct DeleteArgs {}
 
+async fn build_client(config:SdkConfig) -> ec2::Client {
+    ec2::Client::new(&config)
+}
+
+async fn eval_subcommand(images:Vec<ec2::types::Image>,
+                         cmd: &Command,
+                         lang: &Option<ImageLang>,
+                         platform: &Option<ImagePlatform>) -> Result<(), Error> {
+    match &cmd {
+        Command::List(_args) => { subcommands::list_command(images, lang, platform) }
+        Command::Delete(_args) => { subcommands::delete_command(images, lang, platform) }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
 
     let cli = Cli::parse();
-    let aws_images = aws_config::load_from_env()
-        .then(|cfg:SdkConfig| { future::ok(ec2::Client::new(&cfg)) })
-        .then(|client:Result<ec2::Client,Error>| { aws::describe_images(client.unwrap(), &cli.lang, &cli.platform) })
-        .await;
 
-    match &cli.command {
-        Commands::List(_args) => { subcommands::list_command(aws_images, cli.lang, cli.platform) }
-        Commands::Delete(_args) => { subcommands::delete_command(aws_images, cli.lang, cli.platform) }
-    }
+    aws_config::load_from_env()
+        .then(|cfg:SdkConfig| { build_client(cfg) })
+        .then(|client:ec2::Client| { aws::describe_images(client, &cli.lang, &cli.platform) })
+        .then(|images:Vec<ec2::types::Image>| { eval_subcommand(images, &cli.command, &cli.lang, &cli.platform) })
+        .await
 }
