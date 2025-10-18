@@ -3,31 +3,13 @@ use futures::prelude::*;
 
 use aws_config::SdkConfig;
 use aws_sdk_ec2 as ec2;
-use clap::{Parser, Subcommand, Args, ValueEnum};
-use strum_macros::Display;
+use clap::{Parser, Subcommand, Args};
 
 pub mod rr;
 use rr::aws;
 use rr::subcommands;
+use rr::{ImageLang, ImagePlatform};
 
-#[derive(ValueEnum,Clone,Debug,Display)]
-pub enum ImageLang {
-    Java,
-    Python,
-    Nodejs,
-    Cpp,
-    Csharp,
-}
-
-#[derive(ValueEnum,Clone,Debug,Display)]
-pub enum ImagePlatform {
-    Bionic,
-    Focal,
-    Jammy,
-    Rocky8,
-    Rocky9,
-    Windows
-}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

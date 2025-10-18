@@ -1,13 +1,14 @@
-use tabled::{Table, Tabled};
+use tabled::Tabled;
 
 use aws_sdk_ec2 as ec2;
 use ec2::types::BlockDeviceMapping;
 use ec2::types::Image;
 
-// Collection of ops related to generating output via tabled crate
+// The DriverImage struct (our main representation for data retrieved from AWS) and some utility
+// methods leveraging it.
 
 #[derive(Tabled)]
-pub struct TabledImage {
+pub struct DriverImage {
     name: String,
     image_id: String,
     creation_date: String,
@@ -20,9 +21,9 @@ fn display_snapshot_ids(val: &Vec<String>) -> String {
 }
 
 // Build a TabledImage from an AWS Image instance
-pub fn from_image(image:&Image) -> TabledImage {
+pub fn from_image(image:&Image) -> DriverImage {
 
-    TabledImage {
+    DriverImage {
         name: image.name().unwrap().to_string(),
         image_id: image.image_id().unwrap().to_string(),
         creation_date: image.creation_date().unwrap().to_string(),
@@ -37,12 +38,6 @@ pub fn from_image(image:&Image) -> TabledImage {
 }
 
 // Convenience function to apply the transform above to an existing vector
-pub fn from_image_vector(images:Vec<Image>) -> Vec<TabledImage> {
+pub fn from_image_vector(images:Vec<Image>) -> Vec<DriverImage> {
     images.iter().map(from_image).collect()
-}
-
-pub fn print_image_table(images:Vec<ec2::types::Image>) {
-    let images = from_image_vector(images);
-    let table = Table::new(images);
-    println!("{}", table);
 }

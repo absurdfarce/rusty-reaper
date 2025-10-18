@@ -2,6 +2,8 @@ use aws_sdk_ec2 as ec2;
 use ec2::types::{Image, Filter};
 use crate::{ImageLang, ImagePlatform};
 
+// AWS ops
+
 fn to_string(lang:&ImageLang) -> String {
     format!("{}-driver", lang).to_lowercase()
 }
