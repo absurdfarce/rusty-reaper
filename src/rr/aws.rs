@@ -1,24 +1,37 @@
 use aws_sdk_ec2 as ec2;
+use aws_sdk_ec2::types::{BlockDeviceMapping, Snapshot};
 use ec2::types::{Image, Filter};
+use log::{info,warn};
+
 use crate::{ImageLang, ImagePlatform};
 
 // AWS ops
+//
+// Functions in this module are expected to return AWS SDK types.  We'll translate those into something useful
+// at higher levels of the abstraction.
 
-fn to_string(lang:&ImageLang) -> String {
-    format!("{}-driver", lang).to_lowercase()
+pub fn to_lang_string(lang:&Option<ImageLang>) -> String {
+    lang.as_ref().unwrap_or_else(|| &ImageLang::Java).to_string()
 }
 
-fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> String {
-    let image_type = lang.as_ref().unwrap_or_else(|| &ImageLang::Java);
+pub fn to_platform_string(platform:&Option<ImagePlatform>) -> String {
     match platform {
-        None => format!("{}-*", to_string(&image_type).to_string()),
-        Some(p) => format!("{}-{}-64-*", to_string(&image_type), p).to_lowercase(),
+        None => "*".to_string(),
+        Some(p) => format!("{}", p),
     }
 }
 
-pub async fn describe_images(client:ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Vec<Image> {
+fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> String {
+    let base = format!("{}-driver-{}", to_lang_string(lang),to_platform_string(platform)).to_lowercase();
+    match platform {
+        None => base,
+        Some(_) => format!("{}-64-*", base).to_lowercase(),
+    }
+}
+
+pub async fn describe_images(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Vec<Image> {
     let filter_string = build_filter_string(lang, platform);
-    println!("Retrieving image data, filter string: {}", filter_string);
+    info!("Retrieving image data, filter string: {}", filter_string);
     let resp = client.describe_images()
         .filters(Filter::builder().name("name").values(filter_string).build())
         .send()
@@ -26,10 +39,51 @@ pub async fn describe_images(client:ec2::Client, lang:&Option<ImageLang>, platfo
     match resp {
         Ok(v) => v.images.unwrap_or_default(),
         Err(e) => {
-            eprintln!("Error retrieving image data: {}", e);
+            warn!("Error retrieving image data: {}", e);
             Vec::new()
         }
     }
+}
+
+pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -> Vec<Snapshot> {
+
+    info!("Retrieving snapshot data, snapshot_ids: {}", snapshot_ids.join(","));
+    let resp = client.describe_snapshots()
+        .set_snapshot_ids(Some(snapshot_ids))
+        .send()
+        .await;
+    match resp {
+        Ok(v) => v.snapshots.unwrap_or_default(),
+        Err(e) => {
+            warn!("Error retrieving snapshot data: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+pub fn get_snapshot_ids(image:&Image) -> Vec<String> {
+    image.block_device_mappings().iter()
+        .filter(|mapping| -> bool {
+            match mapping.ebs() {
+                None => {
+                    info!("Empty ebs entry for image {}", image.image_id().unwrap());
+                    false
+                }
+                Some(ebs) => {
+                    match ebs.snapshot_id() {
+                        None => {
+                            info!("Empty snapshot ID for ebs entry for image {}", image.image_id().unwrap());
+                            false
+                        }
+                        Some(_) => true
+                    }
+                }
+            }
+        })
+        .map(|mapping:&BlockDeviceMapping| -> String {
+            mapping.ebs().unwrap().snapshot_id().unwrap().to_string()
+        })
+        .collect::<Vec<String>>()
 }
 
 #[cfg(test)]

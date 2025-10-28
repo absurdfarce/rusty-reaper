@@ -6,7 +6,7 @@ use aws_sdk_ec2 as ec2;
 use clap::{Parser, Subcommand, Args};
 
 pub mod rr;
-use rr::aws;
+use crate::rr::driverimage::{build_driver_images, DriverImage};
 use rr::subcommands;
 use rr::{ImageLang, ImagePlatform};
 
@@ -42,13 +42,14 @@ async fn build_client(config:SdkConfig) -> ec2::Client {
     ec2::Client::new(&config)
 }
 
-async fn eval_subcommand(images:Vec<ec2::types::Image>,
+async fn eval_subcommand(client: &ec2::Client,
+                         images:Vec<DriverImage>,
                          cmd: &Command,
                          lang: &Option<ImageLang>,
                          platform: &Option<ImagePlatform>) -> Result<(), Error> {
     match &cmd {
-        Command::List(_args) => { subcommands::list_command(images, lang, platform) }
-        Command::Delete(_args) => { subcommands::delete_command(images, lang, platform) }
+        Command::List(_args) => { subcommands::list_command(client, images, lang, platform) }
+        Command::Delete(_args) => { subcommands::delete_command(client, images, lang, platform) }
     }
 }
 
@@ -57,9 +58,10 @@ async fn main() -> Result<(), Error> {
 
     let cli = Cli::parse();
 
-    aws_config::load_from_env()
-        .then(|cfg:SdkConfig| { build_client(cfg) })
-        .then(|client:ec2::Client| { aws::describe_images(client, &cli.lang, &cli.platform) })
-        .then(|images:Vec<ec2::types::Image>| { eval_subcommand(images, &cli.command, &cli.lang, &cli.platform) })
+    let client = aws_config::load_from_env()
+        .then(|cfg:SdkConfig| { build_client(cfg) }).await;
+
+    build_driver_images(&client, &cli.lang, &cli.platform)
+        .then(|images:Vec<DriverImage>| { eval_subcommand(&client, images, &cli.command, &cli.lang, &cli.platform) })
         .await
 }
