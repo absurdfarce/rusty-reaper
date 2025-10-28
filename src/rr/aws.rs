@@ -1,7 +1,7 @@
 use aws_sdk_ec2 as ec2;
 use aws_sdk_ec2::types::{BlockDeviceMapping, Snapshot};
 use ec2::types::{Image, Filter};
-use log::{info,warn};
+use log::{debug,warn};
 
 use crate::{ImageLang, ImagePlatform};
 
@@ -10,6 +10,7 @@ use crate::{ImageLang, ImagePlatform};
 // Functions in this module are expected to return AWS SDK types.  We'll translate those into something useful
 // at higher levels of the abstraction.
 
+// The next few functions are an impl of the naming convention used by our AWS images.
 pub fn to_lang_string(lang:&Option<ImageLang>) -> String {
     lang.as_ref().unwrap_or_else(|| &ImageLang::Java).to_string()
 }
@@ -31,7 +32,7 @@ fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>)
 
 pub async fn describe_images(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Vec<Image> {
     let filter_string = build_filter_string(lang, platform);
-    info!("Retrieving image data, filter string: {}", filter_string);
+    debug!("Retrieving image data, filter string: {}", filter_string);
     let resp = client.describe_images()
         .filters(Filter::builder().name("name").values(filter_string).build())
         .send()
@@ -47,7 +48,7 @@ pub async fn describe_images(client:&ec2::Client, lang:&Option<ImageLang>, platf
 
 pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -> Vec<Snapshot> {
 
-    info!("Retrieving snapshot data, snapshot_ids: {}", snapshot_ids.join(","));
+    debug!("Retrieving snapshot data, snapshot_ids: {}", snapshot_ids.join(","));
     let resp = client.describe_snapshots()
         .set_snapshot_ids(Some(snapshot_ids))
         .send()
@@ -66,13 +67,16 @@ pub fn get_snapshot_ids(image:&Image) -> Vec<String> {
         .filter(|mapping| -> bool {
             match mapping.ebs() {
                 None => {
-                    info!("Empty ebs entry for image {}", image.image_id().unwrap());
+                    // Runner images are built with an EBS configuration so make sure to exclude
+                    // anybody who might come in via our search without one.
+                    warn!("Empty ebs entry for image {}", image.image_id().unwrap());
                     false
                 }
                 Some(ebs) => {
                     match ebs.snapshot_id() {
                         None => {
-                            info!("Empty snapshot ID for ebs entry for image {}", image.image_id().unwrap());
+                            // Similar to the above; if you don't have a snapshot we aren't interested
+                            warn!("Empty snapshot ID for ebs entry for image {}", image.image_id().unwrap());
                             false
                         }
                         Some(_) => true

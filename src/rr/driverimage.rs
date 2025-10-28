@@ -1,10 +1,9 @@
 use std::fmt::{Display, Formatter};
 
-use tabled::Tabled;
-
 use aws_sdk_ec2 as ec2;
 use ec2::types::Image;
 use futures::FutureExt;
+use tabled::Tabled;
 
 use crate::{ImageLang, ImagePlatform};
 use crate::rr::aws;

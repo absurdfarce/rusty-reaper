@@ -1,9 +1,10 @@
 use std::io::Error;
-use futures::prelude::*;
 
 use aws_config::SdkConfig;
 use aws_sdk_ec2 as ec2;
 use clap::{Parser, Subcommand, Args};
+use env_logger::Env;
+use futures::prelude::*;
 
 pub mod rr;
 use crate::rr::driverimage::{build_driver_images, DriverImage};
@@ -56,10 +57,17 @@ async fn eval_subcommand(client: &ec2::Client,
 #[tokio::main]
 async fn main() -> Result<(), Error> {
 
+    // Stolen from env_logger samples (see https://github.com/rust-cli/env_logger/blob/main/examples/default.rs)
+    let env = Env::default()
+        .filter_or("MY_LOG_LEVEL", "info")
+        .write_style_or("MY_LOG_STYLE", "always");
+    env_logger::init_from_env(env);
+
     let cli = Cli::parse();
 
     let client = aws_config::load_from_env()
-        .then(|cfg:SdkConfig| { build_client(cfg) }).await;
+        .then(|cfg:SdkConfig| { build_client(cfg) })
+        .await;
 
     build_driver_images(&client, &cli.lang, &cli.platform)
         .then(|images:Vec<DriverImage>| { eval_subcommand(&client, images, &cli.command, &cli.lang, &cli.platform) })
