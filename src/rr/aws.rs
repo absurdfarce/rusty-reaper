@@ -1,8 +1,7 @@
 use anyhow;
 use aws_sdk_ec2 as ec2;
-use aws_sdk_ec2::error::SdkError;
 use aws_sdk_ec2::types::{BlockDeviceMapping, Filter, Image, Snapshot};
-use log::{debug,warn};
+use log::{debug, warn};
 
 use crate::{ImageLang, ImagePlatform};
 
@@ -41,7 +40,7 @@ pub async fn describe_image_by_id(client:&ec2::Client, image_id:String) -> Resul
     debug!("Retrieving image data by image ID: {}", &image_id);
     match describe_images(client, Filter::builder().name("image-id").values(&image_id).build()).await {
         Ok(images) => Ok(images.first().unwrap().clone()),
-        Err(e) => Err(anyhow::anyhow!("No image found for ID {}",&image_id))
+        Err(_) => Err(anyhow::anyhow!("No image found for ID {}",&image_id))
     }
 }
 
@@ -95,6 +94,19 @@ pub fn get_valid_snapshot_ids(image:&Image) -> Vec<String> {
             mapping.ebs().unwrap().snapshot_id().unwrap().to_string()
         })
         .collect::<Vec<String>>()
+}
+
+pub async fn deregister_image(client:&ec2::Client, image_id:&String) -> Result<bool, anyhow::Error> {
+    debug!("Deregistering image (and deleting snapshots) with image ID: {}", image_id.to_string());
+    let resp = client.deregister_image()
+        .set_image_id(Some(image_id.to_string()))
+        .delete_associated_snapshots(true)
+        .send()
+        .await;
+    match resp {
+        Ok(image_output) => Ok(image_output.r#return.unwrap()),
+        Err(e) => Err(anyhow::anyhow!("Error deregistering image: {}", e))
+    }
 }
 
 #[cfg(test)]

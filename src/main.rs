@@ -37,7 +37,7 @@ pub struct ListArgs {
 }
 
 #[derive(Args)]
-struct DeleteArgs {
+pub struct DeleteArgs {
 
     #[arg(short, long)]
     image_id: String
@@ -61,7 +61,7 @@ async fn eval_subcommand(client: &ec2::Client,
                         e))
             }
         }
-        Command::Delete(args) => { subcommands::delete_command(client).await }
+        Command::Delete(args) => { subcommands::delete_command(client, args).await }
     }
 }
 

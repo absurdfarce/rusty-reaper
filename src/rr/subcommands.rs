@@ -1,10 +1,10 @@
 use anyhow::Result;
 use aws_sdk_ec2 as ec2;
-use log::{info};
+use log::{error, info};
 use tabled::Table;
 use tabled::settings::Style;
 
-use crate::{ListArgs};
+use crate::{DeleteArgs, ListArgs};
 use crate::rr::aws;
 use crate::rr::driverimage::DriverImage;
 
@@ -17,8 +17,17 @@ pub async fn list_command(_client: &ec2::Client, images:Vec<DriverImage>, args: 
     Ok(())
 }
 
-pub async fn delete_command(_client: &ec2::Client) -> Result<()> {
+pub async fn delete_command(client: &ec2::Client, args: &DeleteArgs) -> Result<()> {
 
-    info!("We're deleting images!");
-    Ok(())
+    info!("Deleting image with ID {}", &args.image_id);
+    match aws::deregister_image(client, &args.image_id).await {
+        Ok(result) => {
+            println!("Result of image deletion: {} ", result);
+            Ok(())
+        },
+        Err(e) => {
+            error!("Error deleting image: {}", e);
+            Err(e)
+        }
+    }
 }
