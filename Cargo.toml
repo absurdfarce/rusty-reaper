@@ -15,3 +15,7 @@ futures = "0.3.31"
 log = "0.4.28"
 env_logger = "0.11.8"
 anyhow = "1.0.100"
+
+[[bin]]
+name = "rr"
+path = "src/main.rs"

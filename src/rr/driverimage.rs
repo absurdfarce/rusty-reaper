@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use aws_sdk_ec2 as ec2;
 use ec2::types::Image;
 use futures::{FutureExt};

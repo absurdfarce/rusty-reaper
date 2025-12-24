@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use aws_sdk_ec2 as ec2;
 use aws_sdk_ec2::types::{BlockDeviceMapping, Filter, Image, Snapshot};
 use log::{debug, warn};
