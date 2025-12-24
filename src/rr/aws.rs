@@ -1,6 +1,7 @@
+use anyhow;
 use aws_sdk_ec2 as ec2;
-use aws_sdk_ec2::types::{BlockDeviceMapping, Snapshot};
-use ec2::types::{Image, Filter};
+use aws_sdk_ec2::error::SdkError;
+use aws_sdk_ec2::types::{BlockDeviceMapping, Filter, Image, Snapshot};
 use log::{debug,warn};
 
 use crate::{ImageLang, ImagePlatform};
@@ -30,20 +31,26 @@ fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>)
     }
 }
 
-pub async fn describe_images(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Vec<Image> {
+pub async fn describe_images_by_lang_and_platform(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Result<Vec<Image>, anyhow::Error> {
     let filter_string = build_filter_string(lang, platform);
-    debug!("Retrieving image data, filter string: {}", filter_string);
-    let resp = client.describe_images()
-        .filters(Filter::builder().name("name").values(filter_string).build())
-        .send()
-        .await;
-    match resp {
-        Ok(v) => v.images.unwrap_or_default(),
-        Err(e) => {
-            warn!("Error retrieving image data: {}", e);
-            Vec::new()
-        }
+    debug!("Retrieving image data by lang and platform, filter string: {}", filter_string);
+    describe_images(client, Filter::builder().name("name").values(filter_string).build()).await
+}
+
+pub async fn describe_image_by_id(client:&ec2::Client, image_id:String) -> Result<Image, anyhow::Error> {
+    debug!("Retrieving image data by image ID: {}", &image_id);
+    match describe_images(client, Filter::builder().name("image-id").values(&image_id).build()).await {
+        Ok(images) => Ok(images.first().unwrap().clone()),
+        Err(e) => Err(anyhow::anyhow!("No image found for ID {}",&image_id))
     }
+}
+
+pub async fn describe_images(client:&ec2::Client, filter:Filter) -> Result<Vec<Image>, anyhow::Error> {
+    let resp = client.describe_images()
+        .filters(filter)
+        .send()
+        .await?;
+    Ok(resp.images.unwrap_or_default())
 }
 
 pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -> Vec<Snapshot> {
@@ -62,7 +69,7 @@ pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -
     }
 }
 
-pub fn get_snapshot_ids(image:&Image) -> Vec<String> {
+pub fn get_valid_snapshot_ids(image:&Image) -> Vec<String> {
     image.block_device_mappings().iter()
         .filter(|mapping| -> bool {
             match mapping.ebs() {

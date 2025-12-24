@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
 
+use anyhow;
 use aws_sdk_ec2 as ec2;
 use ec2::types::Image;
-use futures::FutureExt;
+use futures::{FutureExt, future};
 use tabled::Tabled;
 
 use crate::{ImageLang, ImagePlatform};
@@ -37,20 +38,32 @@ fn display_snapshots(val: &Vec<Snapshot>) -> String {
     val.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(",")
 }
 
-pub async fn build_driver_images(client:&ec2::Client, lang: &Option<ImageLang>, platform: &Option<ImagePlatform>) -> Vec<DriverImage> {
+pub async fn build_driver_images_by_lang_and_platform(client:&ec2::Client, lang: &Option<ImageLang>, platform: &Option<ImagePlatform>) -> Result<Vec<DriverImage>,anyhow::Error> {
 
-    aws::describe_images(client, lang, platform)
-        .then(|images:Vec<Image>| {
-            let driver_images:Vec<_> = images.into_iter().map(|i| { build_driver_image(client, i) }).collect();
-            futures::future::join_all(driver_images)
-        }).await
+    let rv = aws::describe_images_by_lang_and_platform(client, lang, platform)
+        .map(|image_result:Result<Vec<Image>, anyhow::Error>| {
+            image_result.map(|images:Vec<Image>| {
+                let driver_images:Vec<_> = images.into_iter().map(|i| { build_driver_image(client, i) }).collect();
+                futures::future::join_all(driver_images)
+            })
+        }).await?;
+    Ok(rv.await)
+}
+
+pub async fn build_driver_image_by_id(client:&ec2::Client, image_id:String) -> Result<DriverImage, anyhow::Error> {
+
+    let rv = aws::describe_image_by_id(client, image_id)
+        .map(|image_result:Result<Image, anyhow::Error>| {
+            image_result.map(|image:Image| { build_driver_image(client, image) })
+        }).await?;
+    Ok(rv.await)
 }
 
 // Build a DriverImage from an AWS Image instance
 pub async fn build_driver_image(client:&ec2::Client, image:Image) -> DriverImage {
 
     // Gather all snapshots and generate Snapshot structs from them
-    let ec2_snapshots = aws::describe_snapshots(client, aws::get_snapshot_ids(&image)).await;
+    let ec2_snapshots = aws::describe_snapshots(client, aws::get_valid_snapshot_ids(&image)).await;
 
     DriverImage {
         name: image.name().unwrap().to_string(),
