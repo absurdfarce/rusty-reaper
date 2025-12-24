@@ -1,6 +1,6 @@
 # Rusty Reaper
 ![Rusty Reaper](rr.png)<br>
-Hat tip to @weideng1 for the image above
+Hat tip to [@weideng1](https://github.com/weideng1/) for the image above
 
 # Introduction
 In my [day job](https://www.ibm.com/products/datastax) we use (and maintain) a Jenkins instance
