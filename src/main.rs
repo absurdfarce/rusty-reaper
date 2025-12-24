@@ -6,8 +6,6 @@ use env_logger::Env;
 use futures::prelude::*;
 
 pub mod rr;
-use rr::aws::{to_lang_string, to_platform_string};
-use rr::driverimage::build_driver_images_by_lang_and_platform;
 use rr::subcommands;
 use rr::{ImageLang, ImagePlatform};
 
@@ -50,18 +48,8 @@ async fn build_client(config:SdkConfig) -> ec2::Client {
 async fn eval_subcommand(client: &ec2::Client,
                          cmd: &Command) -> Result<()> {
     match &cmd {
-        Command::List(args) => {
-
-            match build_driver_images_by_lang_and_platform(&client, &args.lang, &args.platform).await {
-                Ok(images) => subcommands::list_command(client, images, args).await,
-                Err(e) =>
-                    Err(anyhow!("Error retrieving driver images for lang {} and platform {}: {}",
-                        to_lang_string(&args.lang),
-                        to_platform_string(&args.platform),
-                        e))
-            }
-        }
-        Command::Delete(args) => { subcommands::delete_command(client, args).await }
+        Command::List(args) => subcommands::list_command(client, args).await,
+        Command::Delete(args) => subcommands::delete_command(client, args).await
     }
 }
 

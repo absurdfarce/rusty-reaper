@@ -30,6 +30,7 @@ fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>)
     }
 }
 
+// Functions for various AWS calls we rely on
 pub async fn describe_images_by_lang_and_platform(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Result<Vec<Image>, anyhow::Error> {
     let filter_string = build_filter_string(lang, platform);
     debug!("Retrieving image data by lang and platform, filter string: {}", filter_string);
