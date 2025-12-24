@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use aws_config::SdkConfig;
 use aws_sdk_ec2 as ec2;
 use clap::{Parser, Subcommand, Args};

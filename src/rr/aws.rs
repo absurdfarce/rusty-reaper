@@ -1,4 +1,4 @@
-use anyhow;
+use anyhow::{anyhow, Result};
 use aws_sdk_ec2 as ec2;
 use aws_sdk_ec2::types::{BlockDeviceMapping, Filter, Image, Snapshot};
 use log::{debug, warn};
@@ -10,7 +10,7 @@ use crate::{ImageLang, ImagePlatform};
 // Functions in this module are expected to return AWS SDK types.  We'll translate those into something useful
 // at higher levels of the abstraction.
 
-// The next few functions are an impl of the naming convention used by our AWS images.
+// ======================================= Helpers =======================================
 pub fn to_lang_string(lang:&Option<ImageLang>) -> String {
     lang.as_ref().unwrap_or_else(|| &ImageLang::Java).to_string()
 }
@@ -27,45 +27,6 @@ fn build_filter_string(lang:&Option<ImageLang>, platform:&Option<ImagePlatform>)
     match platform {
         None => base,
         Some(_) => format!("{}-64-*", base).to_lowercase(),
-    }
-}
-
-// Functions for various AWS calls we rely on
-pub async fn describe_images_by_lang_and_platform(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Result<Vec<Image>, anyhow::Error> {
-    let filter_string = build_filter_string(lang, platform);
-    debug!("Retrieving image data by lang and platform, filter string: {}", filter_string);
-    describe_images(client, Filter::builder().name("name").values(filter_string).build()).await
-}
-
-pub async fn describe_image_by_id(client:&ec2::Client, image_id:String) -> Result<Image, anyhow::Error> {
-    debug!("Retrieving image data by image ID: {}", &image_id);
-    match describe_images(client, Filter::builder().name("image-id").values(&image_id).build()).await {
-        Ok(images) => Ok(images.first().unwrap().clone()),
-        Err(_) => Err(anyhow::anyhow!("No image found for ID {}",&image_id))
-    }
-}
-
-pub async fn describe_images(client:&ec2::Client, filter:Filter) -> Result<Vec<Image>, anyhow::Error> {
-    let resp = client.describe_images()
-        .filters(filter)
-        .send()
-        .await?;
-    Ok(resp.images.unwrap_or_default())
-}
-
-pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -> Vec<Snapshot> {
-
-    debug!("Retrieving snapshot data, snapshot_ids: {}", snapshot_ids.join(","));
-    let resp = client.describe_snapshots()
-        .set_snapshot_ids(Some(snapshot_ids))
-        .send()
-        .await;
-    match resp {
-        Ok(v) => v.snapshots.unwrap_or_default(),
-        Err(e) => {
-            warn!("Error retrieving snapshot data: {}", e);
-            Vec::new()
-        }
     }
 }
 
@@ -97,7 +58,49 @@ pub fn get_valid_snapshot_ids(image:&Image) -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
-pub async fn deregister_image(client:&ec2::Client, image_id:&String) -> Result<bool, anyhow::Error> {
+// ======================================= AWS ops =======================================
+
+// Friendly front-end to describe_images which generates a filter string based on input lang and platform args
+pub async fn describe_images_by_lang_and_platform(client:&ec2::Client, lang:&Option<ImageLang>, platform:&Option<ImagePlatform>) -> Result<Vec<Image>> {
+    let filter_string = build_filter_string(lang, platform);
+    debug!("Retrieving image data by lang and platform, filter string: {}", filter_string);
+    describe_images(client, Filter::builder().name("name").values(filter_string).build()).await
+}
+
+// Another front-end to describe_images.  Retrieve a single Image value for a given image_id
+pub async fn describe_image_by_id(client:&ec2::Client, image_id:String) -> Result<Image> {
+    debug!("Retrieving image data by image ID: {}", &image_id);
+    match describe_images(client, Filter::builder().name("image-id").values(&image_id).build()).await {
+        Ok(images) => Ok(images.first().unwrap().clone()),
+        Err(_) => Err(anyhow::anyhow!("No image found for ID {}",&image_id))
+    }
+}
+
+// The core describe image operation.  Retrieve Image instances based on an input filter string.
+pub async fn describe_images(client:&ec2::Client, filter:Filter) -> Result<Vec<Image>> {
+    let resp = client.describe_images()
+        .filters(filter)
+        .send()
+        .await?;
+    Ok(resp.images.unwrap_or_default())
+}
+
+// The core describe snapshot operation.  Retrieve Snapshot instances for an input vector of snapshot IDs
+pub async fn describe_snapshots(client:&ec2::Client, snapshot_ids:Vec<String>) -> Result<Vec<Snapshot>> {
+
+    debug!("Retrieving snapshot data, snapshot_ids: {}", snapshot_ids.join(","));
+    let resp = client.describe_snapshots()
+        .set_snapshot_ids(Some(snapshot_ids))
+        .send()
+        .await;
+    match resp {
+        Ok(v) => Ok(v.snapshots.unwrap_or_default()),
+        Err(e) => Err(anyhow::anyhow!("Error retrieving snapshot data: {}", e))
+    }
+}
+
+// The core image deregister operation.  Deregister (remove) an image based on an image ID
+pub async fn deregister_image(client:&ec2::Client, image_id:&String) -> Result<bool> {
     debug!("Deregistering image (and deleting snapshots) with image ID: {}", image_id.to_string());
     let resp = client.deregister_image()
         .set_image_id(Some(image_id.to_string()))
@@ -110,6 +113,7 @@ pub async fn deregister_image(client:&ec2::Client, image_id:&String) -> Result<b
     }
 }
 
+// ======================================= Tests =======================================
 #[cfg(test)]
 mod tests {
     use super::*;
