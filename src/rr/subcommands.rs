@@ -4,8 +4,8 @@ use log::{error, info};
 use tabled::Table;
 use tabled::settings::Style;
 
-use crate::{DeleteArgs, ListArgs};
 use crate::rr::aws::{to_lang_string, to_platform_string, deregister_image};
+use crate::rr::cli::{DeleteArgs, ListArgs};
 use crate::rr::driverimage::{build_driver_images_by_lang_and_platform};
 
 // CLI subcommands and (where necessary) some helpers

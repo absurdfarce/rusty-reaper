@@ -1,45 +1,12 @@
 use anyhow::Result;
 use aws_config::SdkConfig;
 use aws_sdk_ec2 as ec2;
-use clap::{Parser, Subcommand, Args};
+use clap::Parser;
 use env_logger::Env;
 use futures::prelude::*;
 
-pub mod rr;
-use rr::subcommands;
-use rr::{ImageLang, ImagePlatform};
-
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-
-    List(ListArgs),
-    Delete(DeleteArgs)
-}
-
-#[derive(Args)]
-pub struct ListArgs {
-
-    #[arg(value_enum, short, long)]
-    lang: Option<ImageLang>,
-
-    #[arg(value_enum, short, long)]
-    platform: Option<ImagePlatform>,
-}
-
-#[derive(Args)]
-pub struct DeleteArgs {
-
-    #[arg(short, long)]
-    image_id: String
-}
+use rusty_reaper::rr::cli::Command;
+use rusty_reaper::rr::
 
 async fn build_client(config:SdkConfig) -> ec2::Client {
     ec2::Client::new(&config)

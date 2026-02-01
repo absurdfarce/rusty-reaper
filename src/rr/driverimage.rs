@@ -61,7 +61,7 @@ pub async fn build_driver_image_by_id(client:&ec2::Client, image_id:String) -> R
 }
 
 // Build a DriverImage from an AWS Image instance
-async fn build_driver_image(client:&ec2::Client, image:Image) -> DriverImage {
+pub async fn build_driver_image(client:&ec2::Client, image:Image) -> DriverImage {
 
     // Gather all snapshots and generate Snapshot structs from them
     let ec2_snapshots =
