@@ -50,3 +50,8 @@ java-driver-bionic-64-00000002   ami-00000000000000002   2025-04-01T17:13:13.000
 ```
 
 We can also cross-check our results via the AWS CLI (or your own preferred method) 
+
+# AWS Credentials
+In general the credential support provided by the AWS SDK crate(s) are supported.  This crate provides no
+additional functionality in this area.  Consult the [relevant AWS SDK docs](https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html)
+for additional information.
