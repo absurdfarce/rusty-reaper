@@ -1,7 +1,10 @@
 use clap::ValueEnum;
 use strum_macros::Display;
 
-pub mod rr;
+pub mod aws;
+pub mod cli;
+pub mod driverimage;
+pub mod subcommands;
 
 #[derive(ValueEnum,Clone,Debug,Display)]
 pub enum ImageLang {

@@ -8,7 +8,7 @@ use log::{debug};
 use tabled::Tabled;
 
 use crate::{ImageLang, ImagePlatform};
-use crate::rr::aws;
+use crate::aws;
 
 // The DriverImage struct (our main representation for data retrieved from AWS) and some utility
 // methods leveraging it.

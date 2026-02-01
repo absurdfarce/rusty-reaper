@@ -5,8 +5,8 @@ use clap::Parser;
 use env_logger::Env;
 use futures::prelude::*;
 
-use rusty_reaper::rr::cli::Command;
-use rusty_reaper::rr::
+use rusty_reaper::cli::{Cli, Command};
+use rusty_reaper::subcommands::{list_command, delete_command};
 
 async fn build_client(config:SdkConfig) -> ec2::Client {
     ec2::Client::new(&config)
@@ -15,8 +15,8 @@ async fn build_client(config:SdkConfig) -> ec2::Client {
 async fn eval_subcommand(client: &ec2::Client,
                          cmd: &Command) -> Result<()> {
     match &cmd {
-        Command::List(args) => subcommands::list_command(client, args).await,
-        Command::Delete(args) => subcommands::delete_command(client, args).await
+        Command::List(args) => list_command(client, args).await,
+        Command::Delete(args) => delete_command(client, args).await
     }
 }
 
