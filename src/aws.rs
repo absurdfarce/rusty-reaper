@@ -1,6 +1,8 @@
 use anyhow::Result;
+use aws_config::SdkConfig;
 use aws_sdk_ec2 as ec2;
 use aws_sdk_ec2::types::{BlockDeviceMapping, Filter, Image, Snapshot};
+use futures::FutureExt;
 use log::{debug, warn};
 
 use crate::{ImageLang, ImagePlatform};
@@ -56,6 +58,17 @@ pub fn get_valid_snapshot_ids(image:&Image) -> Vec<String> {
             mapping.ebs().unwrap().snapshot_id().unwrap().to_string()
         })
         .collect::<Vec<String>>()
+}
+
+// ======================================= AWS config loader =======================================
+async fn create_client(config:SdkConfig) -> ec2::Client {
+    ec2::Client::new(&config)
+}
+
+pub async fn build_client() -> ec2::Client {
+    aws_config::load_from_env()
+        .then(|cfg: SdkConfig| { create_client(cfg) })
+        .await
 }
 
 // ======================================= AWS ops =======================================

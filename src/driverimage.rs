@@ -8,7 +8,7 @@ use log::{debug};
 use tabled::Tabled;
 
 use crate::{ImageLang, ImagePlatform};
-use crate::rr::aws;
+use crate::aws;
 
 // The DriverImage struct (our main representation for data retrieved from AWS) and some utility
 // methods leveraging it.
@@ -16,8 +16,8 @@ use crate::rr::aws;
 // Also provide a translation between AWS SDK types and DriverImage and related structs
 
 pub struct Snapshot {
-    snapshot_id: String,
-    volume_id: String
+    pub snapshot_id: String,
+    pub volume_id: String
 }
 
 impl Display for Snapshot {
@@ -28,11 +28,11 @@ impl Display for Snapshot {
 
 #[derive(Tabled)]
 pub struct DriverImage {
-    name: String,
-    image_id: String,
-    creation_date: String,
+    pub name: String,
+    pub image_id: String,
+    pub creation_date: String,
     #[tabled(display("display_snapshots"))]
-    snapshots: Vec<Snapshot>
+    pub snapshots: Vec<Snapshot>
 }
 
 fn display_snapshots(val: &Vec<Snapshot>) -> String {
@@ -61,7 +61,7 @@ pub async fn build_driver_image_by_id(client:&ec2::Client, image_id:String) -> R
 }
 
 // Build a DriverImage from an AWS Image instance
-async fn build_driver_image(client:&ec2::Client, image:Image) -> DriverImage {
+pub async fn build_driver_image(client:&ec2::Client, image:Image) -> DriverImage {
 
     // Gather all snapshots and generate Snapshot structs from them
     let ec2_snapshots =
