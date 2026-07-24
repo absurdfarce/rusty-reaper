@@ -55,3 +55,6 @@ We can also cross-check our results via the AWS CLI (or your own preferred metho
 In general the credential support provided by the AWS SDK crate(s) are supported.  This crate provides no
 additional functionality in this area.  Consult the [relevant AWS SDK docs](https://docs.aws.amazon.com/sdk-for-rust/latest/dg/credproviders.html)
 for additional information.
+
+# Licensing
+Rusty Reaper is distributed under the MIT license.  Check out the `LICENSE` file in the repo and go nuts.
